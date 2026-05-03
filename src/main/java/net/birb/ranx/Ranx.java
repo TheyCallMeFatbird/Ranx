@@ -1,6 +1,12 @@
 package net.birb.ranx;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,10 +21,22 @@ public class Ranx implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		// This code runs as soon as Minecraft is in a mod-load-ready state.
-		// However, some things (like resources) may still be uninitialized.
-		// Proceed with mild caution.
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> RanxService.onServerStarted(server));
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> RanxService.onServerStopping());
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> RanxService.onPlayerJoin(handler.player));
 
-		LOGGER.info("Hello Fabric world!");
+		ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
+			if (RanxService.isMuted(sender)) {
+				sender.sendSystemMessage(Component.literal("You are muted.").withStyle(ChatFormatting.RED));
+				return false;
+			}
+			return true;
+		});
+
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			RanxCommands.register(dispatcher);
+		});
+
+		LOGGER.info("Ranx initialized.");
 	}
 }
